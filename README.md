@@ -165,4 +165,4 @@ Application should have the following endpoints:
   1. Push code to github
   1. Deploy/Host your solution
   1. Reply to the same email with the URLs for **repo**, **hosted API** and **hosted documentation** 
-- For any queries please email us at [hiring@truevalueaccess.com](mailto:hiring@truevalueaccess.com)
+- For any queries please email us at [careers@datapeace.in](mailto:careers@datapeace.in)
