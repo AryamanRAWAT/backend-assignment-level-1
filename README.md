@@ -1,168 +1,204 @@
-# Backend Assignment
+Assignment_datapeace
 
-Create REST APIs using Python (Flask, Django, any other web framework of your choice) for managing the user’s data.  
-You can use database(i.e SQL, NOSQL) of your choice to store the data.  
-Take sample data from [here](https://datapeace-storage.s3-us-west-2.amazonaws.com/dummy_data/users.json).
+The project is a Django-based web application that provides API endpoints to manage user details. It includes functionality to create, retrieve, update, and delete user information. The project utilizes Django's ORM for database operations, allowing users to interact with a database of user details through API calls.
 
-It should have following functionalities:
+Setup and Installation:
 
-- list users (`/api/users GET`)
-- search for a user by name
-- sort list by field name
-- pagination of users list
-- create new user (`/api/users - POST`)
-- get detail of a user (`/api/users/<id> - GET`)
-- update details of a user (`/api/users - PUT`)
-- delete a user (`/api/users - DELETE`)
+1. Clone the Repository:
 
-_Attention to detail and meeting all requirements is important in the project. Completing it in less time will not give you any preference._
+   ```bash
+   git clone https://github.com/AryamanRAWAT/Assignment_datapeace.git
+   cd Assignment_datapeace
+   ```
 
-## **Task Overview**
+2. Create Virtual Environment:
 
-User should have the following attributes:-
+   ```bash
+   python -m venv venv
+   ```
 
-```
-ID
-First Name
-Last Name
-Company Name
-Age
-City
-State
-Zip
-Email
-Web
-```
+3. Activate Virtual Environment:
 
-Application should have the following endpoints:
+   - On Windows:
 
-- `/api/users - GET` - To list the users
+     ```bash
+     venv\Scripts\activate
+     ```
 
-  - Response with HTTP status code 200 on success
+   - On macOS and Linux:
 
-    ```json
-    [
-      {
-        "id": 1,
-        "first_name": "James",
-        "last_name": "Butt",
-        "company_name": "Benton, John B Jr",
-        "city": "New Orleans",
-        "state": "LA",
-        "zip": 70116,
-        "email": "jbutt@gmail.com",
-        "web": "http://www.bentonjohnbjr.com",
-        "age": 70
-      },
-      {
-        "id": 2,
-        "first_name": "Josephine",
-        "last_name": "Darakjy",
-        "company_name": "Chanay, Jeffrey A Esq",
-        "city": "Brighton",
-        "state": "MI",
-        "zip": 48116,
-        "email": "josephine_darakjy@darakjy.org",
-        "web": "http://www.chanayjeffreyaesq.com",
-        "age": 48
-      }
-    ]
-    ```
+     ```bash
+     source venv/bin/activate
+     ```
 
-  - Also, supports some query parameters:
-  - page - a number for pagination
-  - limit - no. of items to be returned, default limit is 5
-  - name - search user by name as a substring in First Name or Last Name (Note, use substring matching algorithm/pattern to match the name). It should be case-insensitive.
-  - Sort - name of attribute, the items to be sorted. By default it returns items in ascending order if this parameter exist, and if the value of parameter is prefixed with ‘-’ character, then it should return items in descending order
 
-  Sample query endpoint:- `/api/users?page=1&limit=10&name=James&sort=-age` This endpoint should return list of 10 users whose first name or last name contains substring given name and sort the users by age in descending order of page 1.
+5. Apply Database Migrations:
 
-- `/api/users - POST` - To create a new user
+   ```bash
+   python manage.py migrate
+   ```
 
-  - Request Payload should be like in json format :-
+6. Run the Development Server:
 
-    ```json
-    {
-      "id": 2,
-      "first_name": "Josephine",
-      "last_name": "Darakjy",
-      "company_name": "Chanay, Jeffrey A Esq",
-      "city": "Brighton",
-      "state": "MI",
-      "zip": 48116,
-      "email": "josephine_darakjy@darakjy.org",
-      "web": "http://www.chanayjeffreyaesq.com",
-      "age": 48
-    }
-    ```
+   ```bash
+   python manage.py runserver
+   ```
 
-  - Response with HTTP status code 201 on success
-    ```json
-    {}
-    ```
-  - This endpoint will create a new user inside the database
+   The server will be running at aryamanrawat2000.pythonanywhere.com/.
 
-- `/api/users/{id} - GET` - To get the details of a user
+API DOCUMENTATION AT: https://documenter.getpostman.com/view/26169620/2s9Ykoe2Hh
 
-  1. Here {id} will be the id of the user in path parameter
-  1. Response with HTTP status code 200 on success
+## API Endpoints
+
+### 1. Create a New User
+
+Endpoint:
+
+- Method: `POST`
+- URL: `/api/post-user/`
+- Request Body:
 
   ```json
   {
     "id": 1,
-    "first_name": "James",
-    "last_name": "Butt",
-    "company_name": "Benton, John B Jr",
-    "city": "New Orleans",
-    "state": "LA",
-    "zip": 70116,
-    "email": "jbutt@gmail.com",
-    "web": "http://www.bentonjohnbjr.com",
-    "age": 70
+    "first_name": "John",
+    "last_name": "Doe",
+    "company_name": "XYZ Corp",
+    "age": 30,
+    "city": "Cityville",
+    "state": "Stateville",
+    "zip": 12345,
+    "email": "john.doe@example.com",
+    "web": "http://example.com"
   }
   ```
 
-  Sample query looks like:- `/api/users/1 GET`
+- Responses:
 
-- `/api/users/{id} PUT` - To update the details of a user
+  - Successful Creation:
+    - Status: 201 Created
+    - Body: "New User Created!"
 
-  - Here {id} will be the id of the user in path parameter
-  - Request Payload should be like in json format for updating first name, last name and age:-
-    ```json
-    {
-      "first_name": "Josephine",
-      "last_name": "Darakjy",
-      "age": 48
-    }
-    ```
-  - Response with HTTP status code 200 on success
-    {}
+  - Email Already Taken:
+    - Status: 400 Bad Request
+    - Body:
+      ```json
+      {
+        "status": "Email already taken",
+        "email_taken": ["john.doe@example.com"],
+        "id_taken": [1]
+      }
+      ```
 
-- `/api/users/{id} DELETE` - To delete the user
+### 2. Get All Users
 
-  - Here {id} will be the id of the user in path parameter
-  - Response with HTTP status code 200 on success
+Endpoint:
 
-    ```json
-    {}
-    ```
+- Method: `GET`
+- URL: `/api/get-all-users/`
 
-## Resources:
+- Query Parameters:
+  - `page` (default: 1): Page number for paginated results.
+  - `limit` (default: 5): Number of entries per page.
+  - `name` (default: ""): Search users by name (substring match in first or last name).
+  - `sort` (default: ""): Sort users by attribute (e.g., "age" or "-age" for descending).
 
-- For sample data [https://datapeace-storage.s3-us-west-2.amazonaws.com/dummy_data/users.json](https://datapeace-storage.s3-us-west-2.amazonaws.com/dummy_data/users.json)
+- Responses:
 
-## **Instructions**
+  - Successful Response:
+    - Status: 200 OK
+    - Body: List of user details in JSON format.
 
-- [ ] README.md should have all the details and instructions like how to setup and run the project
-- [ ] Repo should not contain irrelevant folders/files like cache files, build/dist directories etc.
-- [ ] Create API documentation using Swagger or similar framework
-- [ ] Follow these steps for submission:
-  1. Fork the repository
-  1. Create issues and work on them in their respective branches
-  1. Complete the tasks while following all instructions
-  1. Create MRs and merge into main branch
-  1. When done, Test if all task requirements are met and instructions followed
-  1. Push code to github
-  1. Deploy/Host your solution
-  1. Reply to the same email with the URLs for **repo**, **hosted API** and **hosted documentation** 
-- For any queries please email us at [careers@datapeace.in](mailto:careers@datapeace.in)
+  - Empty Page:
+    - Status: 500 Internal Server Error
+    - Body: "Empty Page."
+
+### 3. Get User by ID
+
+Endpoint:
+
+- Method: `GET`
+- URL: `/api/get-user/{uid}/`
+
+- Path Parameter:
+  - `{uid}`: The unique identifier of the user.
+
+- Responses:
+
+  - Successful Response:
+    - Status: 200 OK
+    - Body: User details in JSON format.
+
+  - User Not Found:
+    - Status: 500 Internal Server Error
+    - Body: "User Does Not Exist."
+
+### 4. Update User by ID
+
+Endpoint:
+
+- Method: `PUT`
+- URL: `/api/update-user/{uid}/`
+
+- Path Parameter:
+  - `{uid}`: The unique identifier of the user.
+
+- Request Body:
+
+  ```json
+  {
+    "first_name": "Updated",
+    "last_name": "User",
+    "company_name": "New Corp",
+    "age": 25,
+    "city": "New City",
+    "state": "New State",
+    "zip": 54321,
+    "email": "updated.user@example.com",
+    "web": "http://newexample.com"
+  }
+  ```
+
+- Responses:
+
+  - Successful Update:
+    - Status: 200 OK
+    - Body: "Entry Updated!"
+
+  - User Not Found:
+    - Status: 400 Bad Request
+    - Body: "User Does Not Exist."
+
+### 5. Delete User by ID
+
+Endpoint:
+
+- Method: `DELETE`
+- URL: `/api/delete-user/{uid}/`
+
+- Path Parameter:
+  - `{uid}`: The unique identifier of the user.
+
+- Responses:
+
+  - Successful Deletion:
+    - Status: 200 OK
+    - Body: "Entry Deleted!"
+
+  - User Not Found:
+    - Status: 500 Internal Server Error
+    - Body: "User Does Not Exist."
+
+### 6. Delete Users with Filters
+
+Endpoint:
+
+- Method: `DELETE`
+- URL: `/api/delete-all/`
+
+- Query Parameters:
+  - `first_name` (default: ""): Filter users by first name.
+  - `last_name` (default: ""): Filter users by last name.
+  - `age_start` (default: 0): Minimum age for filtering.
+  - `age_end` (default: 0): Maximum age for filtering.
+  - `start_id` (default: 0): Minimum user ID for filtering
