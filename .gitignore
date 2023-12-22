@@ -1,5 +1,6 @@
 # Ignore compiled Python files
 __pycache__/
+api\migrations\__pycache__
 *.pyc
 
 # Ignore virtual environment folder
