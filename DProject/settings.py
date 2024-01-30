@@ -23,10 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-63aia(w6+#7@$w#dg=%pnxka&&r&b43g)zz_bb8@h4n%0bi@$q'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['aryamanrawat2000.pythonanywhere.com']
-
+ALLOWED_HOSTS = ['aryamanrawat2000.pythonanywhere.com','*']
 
 
 # Application definition
@@ -39,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'api',
+	'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -77,8 +77,12 @@ WSGI_APPLICATION = 'DProject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'dp_assignment',
+		'USER': 'AR',
+        'PASSWORD': 'Admin',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
