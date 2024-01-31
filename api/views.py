@@ -51,78 +51,54 @@ class UserAPI(APIView):
                 return Response('New User Created!', status=201)
     
 
-    def get_users_all(request):
+    # to return requested users.
+    @csrf_exempt
+    def get(self,request,pk=None):
+        if pk: 
             try:
-                if request.method == 'GET':            #if the method is GET then only will it work.
+                user = user_details.objects.get(id=pk)
+                print(user)
+                if user:
+                    serializer = User_detailsSerializer(user)
+                    return Response(serializer.data,status=200)            
+            
+                else:                 #if the user does not exists this resposne will be sent.
+                    return Response('User Does Not Exsits.', status=500)
+            except:
+                print(traceback.format_exc())
+                return Response('Server Error', status=500)
+        else:
+            try:
                     page_get = int(request.GET.get('page',1))   #retrieves the value of the 'page' parameter from the request's GET parameters, converting it to an integer with a default value of 1. This parameter tells the code which page of entries are to be shown.
                     limit = int(request.GET.get('limit',5))     #retrieves the value of the 'limit' parameter from the request's GET parameters, with this we can set the limit on entries shown per page.
                     name = request.GET.get('name','')           #variable used in searching of user by name as a substring in First Name or Last Name in database. Default value set to '', if nothing in sent 
-                    sort = request.GET.get('sort','')           #variable used for sort the list of users according to user desired attribute (age,id,etc.). By default it is in ascending order but if '-' is at the front(eg:'-age') then the order is descending.
+                    sort = request.GET.get('sort','id')           #variable used for sort the list of users according to user desired attribute (age,id,etc.). By default it is in ascending order but if '-' is at the front(eg:'-age') then the order is descending.
                     print(page_get,limit,name,sort)
                     users = user_details.objects.all()          #retrieves all entries from the table
-                    user_lst = []                               #an empty list that will contain entries matching the query.
                     print('1>', users)
                     if name:
                         users = users.filter(first_name__icontains=name) | users.filter(last_name__icontains=name)   #the pipe operator '|' is used to combine results of filters. '__icontains' returns all names containing substring(name) and it is case insensitive.  
 
-                    print('2>', sort)
                     if len(sort)>0:                  
+                        print('2>', sort)
                         users = users.order_by(sort)                #list of users according to user desired attribute (age,id,etc.).
                         # print('3>', users)
                     
                     print('4>', users)
-
-
-                    for user in users:
-                        user_dic = {                        
-                        'id' : user.id,
-                        'first_name' : user.first_name,
-                        'last_name' : user.last_name,
-                        'company_name' : user.company_name,
-                        'city' : user.city,
-                        'state' : user.state,
-                        'zip' : user.zip,
-                        'email' : user.email,
-                        'web' : user.web,
-                        'age' : user.age,
-                        }                                   #creating a list of dictionaries (user_lst), where each dictionary represents a user's attributes extracted from the queryset fields. 
-                        user_lst.append(user_dic)
-                    p = Paginator(user_lst,limit)           #paginating the list of user dictionaries (user_lst) with a specified limit of items per page (limit). 
+                    serializer = User_detailsSerializer(users, many=True)
+                    p = Paginator(serializer.data,limit)           #paginating the list of user dictionaries (user_lst) with a specified limit of items per page (limit). 
                     res_page = p.page(page_get)             #res_page holds the items at the specified page.
-                    return JsonResponse(res_page.object_list, safe=False, status=200)  # safe=False argument is used when the data to be serialized is not a dictionary but a list.
+                    print('5>',res_page,)
+                    return Response(res_page.object_list,status=200)  # safe=False argument is used when the data to be serialized is not a dictionary but a list.
 
             except(EmptyPage):                              # this exception is used if the user requests a page that does not hold any items.
-                return HttpResponse('Empty Page.', status=500)    
+                return Response('Empty Page.', status=500)    
 
             except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
-            
-    #method to return requested entry to the user.
-    def get_user(request,uid):                              #this method requires 2 arguments http request and user id by which we find the requested user and return it to the user.
-        if request.method == 'GET':
-            try:
-                user = user_details.objects.get(id=uid)
-                user_dic = {
-                        'id' : uid,
-                        'first_name' : user.first_name,
-                        'last_name' : user.last_name,
-                        'company_name' : user.company_name,
-                        'city' : user.city,
-                        'state' : user.state,
-                        'zip' : user.zip,
-                        'email' : user.email,
-                        'web' : user.web,
-                        'age' : user.age,
-                    }
-                print(user_dic)
-                return JsonResponse(user_dic,status=200)            #JsonResponse is used to send basic json data.
-            
-            except(user_details.DoesNotExist):                      #if the user does not exists this resposne will be sent.
-                return HttpResponse('User Does Not Exsits.', status=500)
-            except:
-                print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)  
+                return Response('Server Error', status=500)
+
+
             
     @csrf_exempt
     def update_user(request,uid):                              #This method updates exsisting user's attributes. This method requires 2 arguments http request and user id by which we find the requested user and update its attribute
