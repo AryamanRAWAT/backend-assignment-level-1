@@ -1,5 +1,4 @@
 # from django
-from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator,EmptyPage
 from django.db import transaction
@@ -37,18 +36,17 @@ class UserAPI(APIView):
                         else:
                             conflicts.append([i+1,serializer.errors])
                         print('2>',conflicts)
-                    
-                        # user_details.objects.bulk_create(entries)
-                    return Response('New Users Created!',conflicts, status=201)
+
+                    return Response(f'New Users Created! Confilcts:{conflicts}', status=status.HTTP_201_CREATED)
             except:
                 print(traceback.format_exc())
-                return Response(conflicts,status=400)
+                return Response(serializer.errors,status=400)
         else:
             check = user_details_save(data)
             if check:
                 return Response(check, status=400)
             else:
-                return Response('New User Created!', status=201)
+                return Response('New User Created!', status=status.HTTP_201_CREATED)
     
 
     # to return requested users.
@@ -56,11 +54,11 @@ class UserAPI(APIView):
     def get(self,request,pk=None):
         if pk: 
             try:
-                user = user_details.objects.get(id=pk)
+                user = user_details.objects.filter(id=pk).first()
                 print(user)
                 if user:
                     serializer = User_detailsSerializer(user)
-                    return Response(serializer.data,status=200)            
+                    return Response(serializer.data,status=status.HTTP_200_OK)            
             
                 else:                 #if the user does not exists this resposne will be sent.
                     return Response('User Does Not Exsits.', status=500)
@@ -122,7 +120,8 @@ class UserAPI(APIView):
       
     @csrf_exempt
     def delete(self,request,pk=None):                           #this method deletes a single entry from the table based on user id given by the user.
-        if pk:                        
+        if pk :  
+                    
             try:
                 user = user_details.objects.get(pk=pk)     #to retrieve user based on primary key attributegiven by the user. 
                 user.delete()                               #this deletes the entry.
@@ -154,6 +153,8 @@ class UserAPI(APIView):
                     users = users.filter(last_name__iexact=last_name)       # case-insensitive matching for last_name.
                 if age_start < age_end:
                     users = users.filter(age__gte=age_start, age__lte=age_end)      #__gte filters all ages greater than or eaqual to age_start.
+                else:
+                    return Response('Please provide valid age range.',status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE)
                 if start_id < end_id:
                     users = users.filter(id__gte=start_id, id__lte=end_id)          #__lte filterd all ids less than or eaqual to end_id.
 
