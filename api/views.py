@@ -101,55 +101,42 @@ class UserAPI(APIView):
 
             
     @csrf_exempt
-    def update_user(request,uid):                              #This method updates exsisting user's attributes. This method requires 2 arguments http request and user id by which we find the requested user and update its attribute
+    def put(self,request,pk):
+        data = json.loads(request.body)
+        try:
+            user_instance = user_details.objects.filter(pk=pk).first()
+            if user_instance:
+                serializer = User_detailsSerializer(user_instance, data=data, partial=True)
 
-        if request.method == 'PUT':                            #function works only if method is 'PUT' 
-            try:
-                data = json.loads(request.body)
-                users = user_details.objects.filter(id=uid)
-                print('1>',users)
-                if users.exists():                             #checks if the user exists and if it does, it will update the entry with new attributes.
-                    user = users.first()
-                    user.first_name = data.get('first_name', user.first_name)
-                    user.last_name = data.get('last_name', user.last_name)
-                    user.company_name = data.get('company_name', user.company_name)
-                    user.age = data.get('age', user.age)
-                    user.city = data.get('city', user.city)
-                    user.state = data.get('state', user.state)
-                    user.zip = data.get('zip', user.zip)
-                    user.email = data.get('email', user.email)
-                    user.web = data.get('web', user.web)
-
-                    user.save()
-
-                    return HttpResponse('Entry Updated!', status=200)
-
-            except(user_details.DoesNotExist):                              #if the user does not exists this resposne will be sent.
-                return HttpResponse('User Does Not Exsits.', status=400)
-
-            except:
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response('Entry Updated!', status=200)
+                else:
+                    return Response(serializer.errors, status=400)
+            else:
+                return Response('User Does Not Exsits.', status=500)
+        except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
+                return Response('Server Error', status=500)
+
       
     @csrf_exempt
-    def delete_user(request,uid):                           #this method deletes a single entry from the table based on user id given by the user.
-        if request.method == 'DELETE':                        
+    def delete(self,request,pk=None):                           #this method deletes a single entry from the table based on user id given by the user.
+        if pk:                        
             try:
-                user = user_details.objects.get(id=uid)     #to retrieve user based on 'id' attributegiven by the user. 
+                user = user_details.objects.get(pk=pk)     #to retrieve user based on primary key attributegiven by the user. 
                 user.delete()                               #this deletes the entry.
-                return HttpResponse('Entry Deleted!', status=200)
+                return Response('Entry Deleted!', status=200)
             
             except(user_details.DoesNotExist):
-                return HttpResponse('User Does Not Exsits.', status=500)
+                return Response('User Does Not Exsits.', status=500)
 
             except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
+                return Response('Server Error', status=500)
 
-
-    @csrf_exempt     
-    def delete_all(request):                                #this method deletes all user.
-        if request.method == 'DELETE':
+        #this segment deletes all user.
+        else:
             try:
                 first_name = request.GET.get('first_name','')
                 last_name = request.GET.get('last_name','')
@@ -179,17 +166,16 @@ class UserAPI(APIView):
                         'first_name' : user.first_name,
                         'last_name' : user.last_name,
                         'email' : user.email,
-                        'age' : user.age,
                     }
                     user_list.append(user_dic)
                 print(user_list)
                 users.delete()
                 if user_list:
-                    return HttpResponse('Entries Deleted!', status=200)
+                    return Response(f'Entries Deleted:{user_list}', status=200)
                 else:
-                    return HttpResponse('Users does not exists!', status=400)
+                    return Response('Users does not exists!', status=400)
                 
             
             except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
+                return Response('Server Error', status=500)
