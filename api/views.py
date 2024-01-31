@@ -1,53 +1,54 @@
-from django.http import JsonResponse
-from django.shortcuts import HttpResponse
-import json                                             #JavaScript Object Notation
-from django.core.paginator import Paginator,EmptyPage
-from api.models import user_details
+# from django
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import traceback
-from api.utils import db_check_save
+from django.core.paginator import Paginator,EmptyPage
+from django.db import transaction
+
+#from drf
+from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.response import Response
+
+#from local app 'api'
+from api.models import user_details
+from api.utils import user_details_save
+from api.serializers import User_detailsSerializer
+
+# python modules
+import traceback
+import json       
 
 
 class UserAPI(APIView):
     @csrf_exempt
     def post(self,request):
-        if request.method == 'POST':        #if the method is POST then only will it work.
+        data = json.loads(request.body)
+        if isinstance(data,list):
+            conflicts = []
             try:
-                data = json.loads(request.body)     #to convert JavaScript Object Notation format to python data structure dictionary.
-                # print(data)
-                if isinstance(data, list):          # if the datastructure of data is list then post_multi_users() is called to handle multiple entries.
-                    taken_info = UserAPI.post_multi_users(data)     
-                    if taken_info:                  # this if statement check whether taken_info is none or not. If it is not none that means few entries already exists. It informs the user on taken entries
-                        return JsonResponse({'status': 'These emails or ids are already taken rest are saved.', 'taken_emails': taken_info[0], 'id_taken': taken_info[1]}, status=400)
-                    else:
-                        return HttpResponse('All Users Created!', status=201)
-                else:
-                    taken_info = db_check_save(data) # this handles single entry
-                    if taken_info:
-                        return JsonResponse({'status': 'Email already taken', 'email_taken': taken_info[0], 'id_taken': taken_info[1]}, status=400)     #taken_info[0] contains the list of taken emails where as taken_info[1] contains taken ids.
-                    else:
-                        return HttpResponse('New User Created!', status=201)
-
-                
-            except:                                 #if any errors are encountered we cathc it using except
-                print(traceback.format_exc())       # returns a string that contains the formatted traceback information leading to the error. 
-                return HttpResponse('Server ERROR...', status=500)  # status 500 represents server side issue.
-
-
-    # to create multiple users
-    def post_multi_users(data):
-        taken_emails = [[],[]] 
-
-        for entry in data:                          #db_check_save method called for each entry.
-            taken_info = db_check_save(entry)  
-            if taken_info:
-                taken_emails[0].extend(taken_info[0])   #taken_emails[0] holds all conflicting emails
-                taken_emails[1].append(taken_info[1])   #taken_emails[1] holds all conflicting ids
-        if len(taken_emails[0])>0 or len(taken_emails[1])>0:
-            return taken_emails
+                with transaction.atomic():
+                    for i in range(len(data)):
+                        
+                        print('1>',data[i], type(data[i]))
+                        serializer = User_detailsSerializer(data=data[i])
+                        
+                        if serializer.is_valid():
+                            serializer.save()
+                        else:
+                            conflicts.append([i+1,serializer.errors])
+                        print('2>',conflicts)
+                    
+                        # user_details.objects.bulk_create(entries)
+                    return Response('New Users Created!',conflicts, status=201)
+            except:
+                print(traceback.format_exc())
+                return Response(conflicts,status=400)
         else:
-            return None                             # none is returned as an indicator to post_user that signify that all entries were saved in db
+            check = user_details_save(data)
+            if check:
+                return Response(check, status=400)
+            else:
+                return Response('New User Created!', status=201)
     
 
     def get_users_all(request):

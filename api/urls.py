@@ -3,7 +3,7 @@ from django.urls import path
 from api import views
 
 urlpatterns = [
-    path('create-user/', views.UserAPI.post, name='post_user'),
+    path('user/', views.UserAPI.as_view()),
     path('get-all-users/', views.UserAPI.get_users_all, name='get_users_all'),
 	path('get-user/<int:uid>', views.UserAPI.get_user, name='get_user'),
     path('update-users/<int:uid>', views.UserAPI.update_user, name='update_user'),
