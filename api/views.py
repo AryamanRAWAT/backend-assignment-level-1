@@ -6,18 +6,18 @@ from api.models import user_details
 from django.views.decorators.csrf import csrf_exempt
 import traceback
 from api.utils import db_check_save
+from rest_framework.views import APIView
 
-class POST_user:                    
-    @csrf_exempt                            # it is a Django decorator used to exempt a view or function from the requirement of including a CSRF token. 
-    # to create a new user.
-    def post_user(request): 
 
+class UserAPI(APIView):
+    @csrf_exempt
+    def post(self,request):
         if request.method == 'POST':        #if the method is POST then only will it work.
             try:
                 data = json.loads(request.body)     #to convert JavaScript Object Notation format to python data structure dictionary.
                 # print(data)
                 if isinstance(data, list):          # if the datastructure of data is list then post_multi_users() is called to handle multiple entries.
-                    taken_info = POST_user.post_multi_users(data)     
+                    taken_info = UserAPI.post_multi_users(data)     
                     if taken_info:                  # this if statement check whether taken_info is none or not. If it is not none that means few entries already exists. It informs the user on taken entries
                         return JsonResponse({'status': 'These emails or ids are already taken rest are saved.', 'taken_emails': taken_info[0], 'id_taken': taken_info[1]}, status=400)
                     else:
@@ -30,7 +30,6 @@ class POST_user:
                         return HttpResponse('New User Created!', status=201)
 
                 
-
             except:                                 #if any errors are encountered we cathc it using except
                 print(traceback.format_exc())       # returns a string that contains the formatted traceback information leading to the error. 
                 return HttpResponse('Server ERROR...', status=500)  # status 500 represents server side issue.
@@ -51,8 +50,6 @@ class POST_user:
             return None                             # none is returned as an indicator to post_user that signify that all entries were saved in db
     
 
-class GET_user:
-    # to return requested users.
     def get_users_all(request):
             try:
                 if request.method == 'GET':            #if the method is GET then only will it work.
@@ -126,7 +123,6 @@ class GET_user:
                 print(traceback.format_exc())
                 return HttpResponse('Server Error', status=500)  
             
-class PUT_user:
     @csrf_exempt
     def update_user(request,uid):                              #This method updates exsisting user's attributes. This method requires 2 arguments http request and user id by which we find the requested user and update its attribute
 
@@ -157,8 +153,7 @@ class PUT_user:
             except:
                 print(traceback.format_exc())
                 return HttpResponse('Server Error', status=500)
-
-class DELETE_user:        
+      
     @csrf_exempt
     def delete_user(request,uid):                           #this method deletes a single entry from the table based on user id given by the user.
         if request.method == 'DELETE':                        
