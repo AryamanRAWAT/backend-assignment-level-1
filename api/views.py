@@ -40,11 +40,11 @@ class UserAPI(APIView):
                     return Response(f'New Users Created! Confilcts:{conflicts}', status=status.HTTP_201_CREATED)
             except:
                 print(traceback.format_exc())
-                return Response(serializer.errors,status=400)
+                return Response(serializer.errors,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             check = user_details_save(data)
             if check:
-                return Response(check, status=400)
+                return Response(check, status=status.HTTP_409_CONFLICT)
             else:
                 return Response('New User Created!', status=status.HTTP_201_CREATED)
     
@@ -61,10 +61,10 @@ class UserAPI(APIView):
                     return Response(serializer.data,status=status.HTTP_200_OK)            
             
                 else:                 #if the user does not exists this resposne will be sent.
-                    return Response('User Does Not Exsits.', status=500)
+                    return Response('User Does Not Exsits.', status=status.HTTP_404_NOT_FOUND)
             except:
                 print(traceback.format_exc())
-                return Response('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             try:
                     page_get = int(request.GET.get('page',1))   #retrieves the value of the 'page' parameter from the request's GET parameters, converting it to an integer with a default value of 1. This parameter tells the code which page of entries are to be shown.
@@ -87,14 +87,14 @@ class UserAPI(APIView):
                     p = Paginator(serializer.data,limit)           #paginating the list of user dictionaries (user_lst) with a specified limit of items per page (limit). 
                     res_page = p.page(page_get)             #res_page holds the items at the specified page.
                     print('5>',res_page,)
-                    return Response(res_page.object_list,status=200)  # safe=False argument is used when the data to be serialized is not a dictionary but a list.
+                    return Response(res_page.object_list,status=status.HTTP_200_OK)  # safe=False argument is used when the data to be serialized is not a dictionary but a list.
 
             except(EmptyPage):                              # this exception is used if the user requests a page that does not hold any items.
-                return Response('Empty Page.', status=500)    
+                return Response('Empty Page.', status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE)    
 
             except:
                 print(traceback.format_exc())
-                return Response('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
             
@@ -108,14 +108,14 @@ class UserAPI(APIView):
 
                 if serializer.is_valid():
                     serializer.save()
-                    return Response('Entry Updated!', status=200)
+                    return Response('Entry Updated!', status=status.HTTP_200_OK)
                 else:
-                    return Response(serializer.errors, status=400)
+                    return Response(serializer.errors, status=status.HTTP_409_CONFLICT)
             else:
-                return Response('User Does Not Exsits.', status=500)
+                return Response('User Does Not Exsits.', status=status.HTTP_404_NOT_FOUND)
         except:
                 print(traceback.format_exc())
-                return Response('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
       
     @csrf_exempt
@@ -125,14 +125,14 @@ class UserAPI(APIView):
             try:
                 user = user_details.objects.get(pk=pk)     #to retrieve user based on primary key attributegiven by the user. 
                 user.delete()                               #this deletes the entry.
-                return Response('Entry Deleted!', status=200)
+                return Response('Entry Deleted!', status=status.HTTP_200_OK)
             
             except(user_details.DoesNotExist):
-                return Response('User Does Not Exsits.', status=500)
+                return Response('User Does Not Exsits.', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             except:
                 print(traceback.format_exc())
-                return Response('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         #this segment deletes all user.
         else:
@@ -172,11 +172,11 @@ class UserAPI(APIView):
                 print(user_list)
                 users.delete()
                 if user_list:
-                    return Response(f'Entries Deleted:{user_list}', status=200)
+                    return Response(f'Entries Deleted:{user_list}', status=status.HTTP_200_OK)
                 else:
-                    return Response('Users does not exists!', status=400)
+                    return Response('Users does not exists!', status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE)
                 
             
             except:
                 print(traceback.format_exc())
-                return Response('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
