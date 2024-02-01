@@ -28,7 +28,6 @@ DEBUG = False
 ALLOWED_HOSTS = ['aryamanrawat2000.pythonanywhere.com']
 
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -39,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'api',
+	'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -77,8 +77,12 @@ WSGI_APPLICATION = 'DProject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'dp_assignment',
+		'USER': 'AR',
+        'PASSWORD': 'Admin',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

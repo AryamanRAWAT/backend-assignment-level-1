@@ -1,183 +1,141 @@
-from django.http import JsonResponse
-from django.shortcuts import HttpResponse
-import json                                             #JavaScript Object Notation
-from django.core.paginator import Paginator,EmptyPage
-from api.models import user_details
+# from django
 from django.views.decorators.csrf import csrf_exempt
+from django.core.paginator import Paginator,EmptyPage
+from django.db import transaction
+
+#from drf
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+#from local app 'api'
+from api.models import user_details
+from api.utils import user_details_save
+from api.serializers import User_detailsSerializer
+
+# python modules
 import traceback
-from api.utils import db_check_save
+import json       
 
-class POST_user:                    
-    @csrf_exempt                            # it is a Django decorator used to exempt a view or function from the requirement of including a CSRF token. 
-    # to create a new user.
-    def post_user(request): 
 
-        if request.method == 'POST':        #if the method is POST then only will it work.
+class UserAPI(APIView):
+    @csrf_exempt
+    def post(self,request):
+        data = json.loads(request.body)
+        if isinstance(data,list):
+            conflicts = []
             try:
-                data = json.loads(request.body)     #to convert JavaScript Object Notation format to python data structure dictionary.
-                # print(data)
-                if isinstance(data, list):          # if the datastructure of data is list then post_multi_users() is called to handle multiple entries.
-                    taken_info = POST_user.post_multi_users(data)     
-                    if taken_info:                  # this if statement check whether taken_info is none or not. If it is not none that means few entries already exists. It informs the user on taken entries
-                        return JsonResponse({'status': 'These emails or ids are already taken rest are saved.', 'taken_emails': taken_info[0], 'id_taken': taken_info[1]}, status=400)
-                    else:
-                        return HttpResponse('All Users Created!', status=201)
-                else:
-                    taken_info = db_check_save(data) # this handles single entry
-                    if taken_info:
-                        return JsonResponse({'status': 'Email already taken', 'email_taken': taken_info[0], 'id_taken': taken_info[1]}, status=400)     #taken_info[0] contains the list of taken emails where as taken_info[1] contains taken ids.
-                    else:
-                        return HttpResponse('New User Created!', status=201)
+                with transaction.atomic():
+                    for i in range(len(data)):
+                        
+                        print('1>',data[i], type(data[i]))
+                        serializer = User_detailsSerializer(data=data[i])
+                        
+                        if serializer.is_valid():
+                            serializer.save()
+                        else:
+                            conflicts.append([i+1,serializer.errors])
+                        print('2>',conflicts)
 
-                
-
-            except:                                 #if any errors are encountered we cathc it using except
-                print(traceback.format_exc())       # returns a string that contains the formatted traceback information leading to the error. 
-                return HttpResponse('Server ERROR...', status=500)  # status 500 represents server side issue.
-
-
-    # to create multiple users
-    def post_multi_users(data):
-        taken_emails = [[],[]] 
-
-        for entry in data:                          #db_check_save method called for each entry.
-            taken_info = db_check_save(entry)  
-            if taken_info:
-                taken_emails[0].extend(taken_info[0])   #taken_emails[0] holds all conflicting emails
-                taken_emails[1].append(taken_info[1])   #taken_emails[1] holds all conflicting ids
-        if len(taken_emails[0])>0 or len(taken_emails[1])>0:
-            return taken_emails
+                    return Response(f'New Users Created! Confilcts:{conflicts}', status=status.HTTP_201_CREATED)
+            except:
+                print(traceback.format_exc())
+                return Response(serializer.errors,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
-            return None                             # none is returned as an indicator to post_user that signify that all entries were saved in db
+            check = user_details_save(data)
+            if check:
+                return Response(check, status=status.HTTP_409_CONFLICT)
+            else:
+                return Response('New User Created!', status=status.HTTP_201_CREATED)
     
 
-class GET_user:
     # to return requested users.
-    def get_users_all(request):
+    @csrf_exempt
+    def get(self,request,pk=None):
+        if pk: 
             try:
-                if request.method == 'GET':            #if the method is GET then only will it work.
+                user = user_details.objects.filter(id=pk).first()
+                print(user)
+                if user:
+                    serializer = User_detailsSerializer(user)
+                    return Response(serializer.data,status=status.HTTP_200_OK)            
+            
+                else:                 #if the user does not exists this resposne will be sent.
+                    return Response('User Does Not Exsits.', status=status.HTTP_404_NOT_FOUND)
+            except:
+                print(traceback.format_exc())
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            try:
                     page_get = int(request.GET.get('page',1))   #retrieves the value of the 'page' parameter from the request's GET parameters, converting it to an integer with a default value of 1. This parameter tells the code which page of entries are to be shown.
                     limit = int(request.GET.get('limit',5))     #retrieves the value of the 'limit' parameter from the request's GET parameters, with this we can set the limit on entries shown per page.
                     name = request.GET.get('name','')           #variable used in searching of user by name as a substring in First Name or Last Name in database. Default value set to '', if nothing in sent 
-                    sort = request.GET.get('sort','')           #variable used for sort the list of users according to user desired attribute (age,id,etc.). By default it is in ascending order but if '-' is at the front(eg:'-age') then the order is descending.
+                    sort = request.GET.get('sort','id')           #variable used for sort the list of users according to user desired attribute (age,id,etc.). By default it is in ascending order but if '-' is at the front(eg:'-age') then the order is descending.
                     print(page_get,limit,name,sort)
                     users = user_details.objects.all()          #retrieves all entries from the table
-                    user_lst = []                               #an empty list that will contain entries matching the query.
                     print('1>', users)
                     if name:
                         users = users.filter(first_name__icontains=name) | users.filter(last_name__icontains=name)   #the pipe operator '|' is used to combine results of filters. '__icontains' returns all names containing substring(name) and it is case insensitive.  
 
-                    print('2>', sort)
                     if len(sort)>0:                  
+                        print('2>', sort)
                         users = users.order_by(sort)                #list of users according to user desired attribute (age,id,etc.).
                         # print('3>', users)
                     
                     print('4>', users)
-
-
-                    for user in users:
-                        user_dic = {                        
-                        'id' : user.id,
-                        'first_name' : user.first_name,
-                        'last_name' : user.last_name,
-                        'company_name' : user.company_name,
-                        'city' : user.city,
-                        'state' : user.state,
-                        'zip' : user.zip,
-                        'email' : user.email,
-                        'web' : user.web,
-                        'age' : user.age,
-                        }                                   #creating a list of dictionaries (user_lst), where each dictionary represents a user's attributes extracted from the queryset fields. 
-                        user_lst.append(user_dic)
-                    p = Paginator(user_lst,limit)           #paginating the list of user dictionaries (user_lst) with a specified limit of items per page (limit). 
+                    serializer = User_detailsSerializer(users, many=True)
+                    p = Paginator(serializer.data,limit)           #paginating the list of user dictionaries (user_lst) with a specified limit of items per page (limit). 
                     res_page = p.page(page_get)             #res_page holds the items at the specified page.
-                    return JsonResponse(res_page.object_list, safe=False, status=200)  # safe=False argument is used when the data to be serialized is not a dictionary but a list.
+                    print('5>',res_page,)
+                    return Response(res_page.object_list,status=status.HTTP_200_OK)  # safe=False argument is used when the data to be serialized is not a dictionary but a list.
 
             except(EmptyPage):                              # this exception is used if the user requests a page that does not hold any items.
-                return HttpResponse('Empty Page.', status=500)    
+                return Response('Empty Page.', status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE)    
 
             except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
             
-    #method to return requested entry to the user.
-    def get_user(request,uid):                              #this method requires 2 arguments http request and user id by which we find the requested user and return it to the user.
-        if request.method == 'GET':
-            try:
-                user = user_details.objects.get(id=uid)
-                user_dic = {
-                        'id' : uid,
-                        'first_name' : user.first_name,
-                        'last_name' : user.last_name,
-                        'company_name' : user.company_name,
-                        'city' : user.city,
-                        'state' : user.state,
-                        'zip' : user.zip,
-                        'email' : user.email,
-                        'web' : user.web,
-                        'age' : user.age,
-                    }
-                print(user_dic)
-                return JsonResponse(user_dic,status=200)            #JsonResponse is used to send basic json data.
-            
-            except(user_details.DoesNotExist):                      #if the user does not exists this resposne will be sent.
-                return HttpResponse('User Does Not Exsits.', status=500)
-            except:
-                print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)  
-            
-class PUT_user:
     @csrf_exempt
-    def update_user(request,uid):                              #This method updates exsisting user's attributes. This method requires 2 arguments http request and user id by which we find the requested user and update its attribute
+    def put(self,request,pk):
+        data = json.loads(request.body)
+        try:
+            user_instance = user_details.objects.filter(pk=pk).first()
+            if user_instance:
+                serializer = User_detailsSerializer(user_instance, data=data, partial=True)
 
-        if request.method == 'PUT':                            #function works only if method is 'PUT' 
-            try:
-                data = json.loads(request.body)
-                users = user_details.objects.filter(id=uid)
-                print('1>',users)
-                if users.exists():                             #checks if the user exists and if it does, it will update the entry with new attributes.
-                    user = users.first()
-                    user.first_name = data.get('first_name', user.first_name)
-                    user.last_name = data.get('last_name', user.last_name)
-                    user.company_name = data.get('company_name', user.company_name)
-                    user.age = data.get('age', user.age)
-                    user.city = data.get('city', user.city)
-                    user.state = data.get('state', user.state)
-                    user.zip = data.get('zip', user.zip)
-                    user.email = data.get('email', user.email)
-                    user.web = data.get('web', user.web)
-
-                    user.save()
-
-                    return HttpResponse('Entry Updated!', status=200)
-
-            except(user_details.DoesNotExist):                              #if the user does not exists this resposne will be sent.
-                return HttpResponse('User Does Not Exsits.', status=400)
-
-            except:
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response('Entry Updated!', status=status.HTTP_200_OK)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_409_CONFLICT)
+            else:
+                return Response('User Does Not Exsits.', status=status.HTTP_404_NOT_FOUND)
+        except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class DELETE_user:        
+      
     @csrf_exempt
-    def delete_user(request,uid):                           #this method deletes a single entry from the table based on user id given by the user.
-        if request.method == 'DELETE':                        
+    def delete(self,request,pk=None):                           #this method deletes a single entry from the table based on user id given by the user.
+        if pk :  
+                    
             try:
-                user = user_details.objects.get(id=uid)     #to retrieve user based on 'id' attributegiven by the user. 
+                user = user_details.objects.get(pk=pk)     #to retrieve user based on primary key attributegiven by the user. 
                 user.delete()                               #this deletes the entry.
-                return HttpResponse('Entry Deleted!', status=200)
+                return Response('Entry Deleted!', status=status.HTTP_200_OK)
             
             except(user_details.DoesNotExist):
-                return HttpResponse('User Does Not Exsits.', status=500)
+                return Response('User Does Not Exsits.', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-    @csrf_exempt     
-    def delete_all(request):                                #this method deletes all user.
-        if request.method == 'DELETE':
+        #this segment deletes all user.
+        else:
             try:
                 first_name = request.GET.get('first_name','')
                 last_name = request.GET.get('last_name','')
@@ -195,6 +153,8 @@ class DELETE_user:
                     users = users.filter(last_name__iexact=last_name)       # case-insensitive matching for last_name.
                 if age_start < age_end:
                     users = users.filter(age__gte=age_start, age__lte=age_end)      #__gte filters all ages greater than or eaqual to age_start.
+                else:
+                    return Response('Please provide valid age range.',status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE)
                 if start_id < end_id:
                     users = users.filter(id__gte=start_id, id__lte=end_id)          #__lte filterd all ids less than or eaqual to end_id.
 
@@ -207,17 +167,16 @@ class DELETE_user:
                         'first_name' : user.first_name,
                         'last_name' : user.last_name,
                         'email' : user.email,
-                        'age' : user.age,
                     }
                     user_list.append(user_dic)
                 print(user_list)
                 users.delete()
                 if user_list:
-                    return HttpResponse('Entries Deleted!', status=200)
+                    return Response(f'Entries Deleted:{user_list}', status=status.HTTP_200_OK)
                 else:
-                    return HttpResponse('Users does not exists!', status=400)
+                    return Response('Users does not exists!', status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE)
                 
             
             except:
                 print(traceback.format_exc())
-                return HttpResponse('Server Error', status=500)
+                return Response('Server Error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
