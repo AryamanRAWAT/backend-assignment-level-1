@@ -15,3 +15,4 @@ class user_details(models.Model):
 
     class Meta:
         unique_together = ('id', 'first_name',)         #the combination of fields 'id' and 'first_name', ensuring uniqueness for pairs of values across the table.
+        indexes = [models.Index(fields=['id','email','first_name'])]
